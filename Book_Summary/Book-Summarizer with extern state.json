@@ -1,0 +1,304 @@
+{
+  "name": "Book-Summarizer with extern state",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Output **only** the text in about 400 words from the \"summary\" field. \nDo **not** include JSON, quotes, or any other fields—just the plain text.\nOutput language is arabic. Never use your knowledge, the output must be from the book.\nSend the output using telegram tool.\nText: {{ $('Get today\\'s pages').item.json.combinedText }}\nlast page raed: {{ $('Get today\\'s pages').item.json.endPage }}",
+        "options": {
+          "systemMessage": "You are an expert book summarization assistant. Your task is to provide a clear and concise summary of the text retrieved from a book. \n\nRules:\n\n1. Summarize the extracted text clearly and concisely.\n3. Output only the summary text, without any JSON, markdown, or additional explanations.\n4. After the summary, append a line that says Last page read: X, where X is the last page number processed and use here for same language as the summary.\n5. Send the output using telegram tool"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        -304
+      ],
+      "id": "c1ba06f8-59e3-4b51-a82b-90b165d9d641",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "sessionKey",
+        "contextWindowLength": 2
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1232,
+        -128
+      ],
+      "id": "c7ab371d-4483-4d30-a8e5-8bbe3174bda9",
+      "name": "Memory"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -304
+      ],
+      "id": "7948445d-47be-42fa-9fd0-5f1bd6462f4f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://drive.google.com/uc?export=download&id=PLACEHOLDER_GDRIVE_FILE_ID",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        -304
+      ],
+      "id": "3acc77a1-61a8-40a4-a304-fab0b3db29c5",
+      "name": "Get PDF"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=data",
+        "options": {
+          "joinPages": false
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -304
+      ],
+      "id": "f64e40a6-540d-4693-a2d7-a6da518a044b",
+      "name": "Extract Text"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "https://docs.google.com/document/d/PLACEHOLDER_DOC_ID/edit?tab=t.0",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "replaceAll",
+              "text": ";",
+              "replaceText": "+ 10;",
+              "matchCase": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -304
+      ],
+      "id": "d255d101-eee1-4db2-9ea2-097542ee2bec",
+      "name": "Update End Page",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "PLACEHOLDER_GDOCS_CRED_ID",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/PLACEHOLDER_DOC_ID/edit?tab=t.0"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -304
+      ],
+      "id": "2d24cfd8-57aa-4bff-8fb8-fea71da59d4f",
+      "name": "Get Start Page",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "PLACEHOLDER_GDOCS_CRED_ID",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "PLACEHOLDER_CHAT_ID",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Text', ``, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        -128
+      ],
+      "id": "4cb8b0be-b29d-46bc-a150-3a3af628930a",
+      "name": "Send message",
+      "webhookId": "PLACEHOLDER_WEBHOOK_ID",
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER_TELEGRAM_CRED_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allInputItems = $input.all();\nlet pages = [];\n\n// === Read lastReadPage from previous node content ===\nconst input = $('Get Start Page').first().json.content || '';\nconst matches = input.match(/\\d+/g);             // find all numbers as strings\nconst numbers = matches ? matches.map(Number) : [0]; // always an array\nconst sum = numbers.reduce((acc, n) => acc + n, 0);\nlet lastReadPage = sum;\n\n// === Extract text pages ===\nif (allInputItems.length > 0 && Array.isArray(allInputItems[0].json.text)) {\n    pages = allInputItems[0].json.text;\n} else {\n    pages = allInputItems.map(item => item.json.text);\n}\n\n// === Logic ===\nconst start = lastReadPage;\nconst end = start + 10;\nconst selectedPages = pages.slice(start, end);\n\n// === Output ===\nreturn [\n  {\n    json: {\n      startPage: start + 1,\n      endPage: Math.min(end, pages.length),\n      selectedPages,\n      combinedText: selectedPages.join('\\n\\n'),\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -304
+      ],
+      "id": "8d6a57df-15e9-4783-8e4c-8954b14ffdfe",
+      "name": "Get today's pages"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -128
+      ],
+      "id": "3df8bc56-4daa-4e6f-8573-8744fa66148e",
+      "name": "Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "PLACEHOLDER_DEEPSEEK_CRED_ID",
+          "name": "DeepSeek account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Start Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PDF": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Get today's pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update End Page": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Start Page": {
+      "main": [
+        [
+          {
+            "node": "Get PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get today's pages": {
+      "main": [
+        [
+          {
+            "node": "Update End Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e6a3905a-a0ab-48c6-a58f-ec145c661026",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "PLACEHOLDER_INSTANCE_ID"
+  },
+  "id": "PLACEHOLDER_WORKFLOW_ID",
+  "tags": []
+}

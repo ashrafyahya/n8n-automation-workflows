@@ -1,0 +1,190 @@
+{
+  "name": "FutureTech",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -384,
+        -16
+      ],
+      "id": "788f511a-0583-4a23-896e-70feaeb14002",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=**Input (from Google Doc):**\n{{ $json.content }}"
+            },
+            {
+              "content": "Must Actions\nEMAIL:\n\nGenerate a well-structured email in HTML:\n\n- Use <p> for each paragraph\n- Use <h2> or <h3> for headings/subheadings\n- Place a <br><br> before headings for extra spacing if needed\n- Start with greeting the reader in <p> ,</p>\n- End with closing: <p>Best regards,<br>FutureTech, Ashraf Y.</p>\n\n\n2. GOOGLE DOCS UPDATE\n\nOpen the existing Google Doc containing the list of article titles.\n\nMove 2 lines down from the last entry.\n\nThen insert the new article title on a new line at the bottom.\n\nKey Style Guidelines\n\nWrite with clarity and journalistic energy.\n\nFocus on emerging, under-reported innovations (e.g., neuromorphic hardware, quantum internet security, synthetic data ethics, bio-computing, molecular electronics, etc.).\n\nAvoid any topics or titles already present in the Google Doc list.\n\nNo filler content — every sentence should provide genuine insight or value.\n\nThe article must be written in German.",
+              "role": "model"
+            }
+          ]
+        },
+        "options": {
+          "systemMessage": "You are an expert technology journalist specializing in future trends and disruptive innovation.     **Your Goal:** Read the provided list of existing article titles from the Google Doc and then generate a completely new, engaging, and unique short article (approximately 300-400 words) about a cutting-edge technological topic **not present in the provided list.**       **Output Format:**  Your response MUST strictly follow this JSON structure:    ```json  {    \"title\": \"[A compelling, unique article title about a new technology]\",    \"article\": \"[The complete generated article text in English, 300-400 words, clearly structured with a captivating introduction and a strong conclusion.]\"  }"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -16
+      ],
+      "id": "a3b740bc-f865-43e8-a833-f75fa9548398",
+      "name": "Message a model",
+      "retryOnFail": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "L8fALeyKlCI6YwvK",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=your-email@example.com, another-email@example.com",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        96,
+        160
+      ],
+      "id": "PLACEHOLDER_NODE_ID_1",
+      "name": "Send a message in Gmail",
+      "webhookId": "PLACEHOLDER_WEBHOOK_ID",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER_CRED_ID_1",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "https://docs.google.com/document/d/PLACEHOLDER_DOC_ID/edit"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -16
+      ],
+      "id": "PLACEHOLDER_NODE_ID_2",
+      "name": "Get old topics",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "PLACEHOLDER_CRED_ID_2",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $('Get old topics').item.json.documentId }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('actionFields0_Text', ``, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        256,
+        160
+      ],
+      "id": "0c1d0816-9ac9-4ac7-b4a1-c1f090ae0735",
+      "name": "Write the new title",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "cIjhjBCxLP3z5v67",
+          "name": "Google Docs account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get old topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get old topics": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write the new title": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "429d05a3-53a8-4b8a-9f8e-81131506e913",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "PLACEHOLDER_INSTANCE_ID"
+  },
+  "id": "PLACEHOLDER_WORKFLOW_ID",
+  "tags": []
+}

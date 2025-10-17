@@ -1,0 +1,278 @@
+{
+  "name": "Book-Summarizer with node static data",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Output **only** the text in about 400 words from the \"summary\" field. \nDo **not** include JSON, quotes, or any other fields—just the plain text.\nOutput language is arabic. Never use your knowledge, the output must be from the book.\n**Send the output using telegram tool.**\nText: {{ $json.combinedText }}\nlast page raed: {{ $('Get today\\'s pages').item.json.endPage }}\n",
+        "options": {
+          "systemMessage": "You are an expert book summarization assistant. Your task is to provide a clear and concise summary of the text retrieved from a book. \n\nRules:\n\n1. Summarize the extracted text clearly and concisely.\n3. Output only the summary text, without any JSON, markdown, or additional explanations.\n4. After the summary, append a line that says Last page read: X, where X is the last page number processed and use here for same language as the summary.\n5. Send the output using telegram tool"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1176,
+        -320
+      ],
+      "id": "c1ba06f8-59e3-4b51-a82b-90b165d9d641",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "sessionKey",
+        "contextWindowLength": 2
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1248,
+        -96
+      ],
+      "id": "c7ab371d-4483-4d30-a8e5-8bbe3174bda9",
+      "name": "Memory"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -320
+      ],
+      "id": "7948445d-47be-42fa-9fd0-5f1bd6462f4f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://drive.google.com/uc?export=download&id=PLACEHOLDER_GDRIVE_FILE_ID",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        -320
+      ],
+      "id": "3acc77a1-61a8-40a4-a304-fab0b3db29c5",
+      "name": "Get PDF"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=data",
+        "options": {
+          "joinPages": false
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -320
+      ],
+      "id": "f64e40a6-540d-4693-a2d7-a6da518a044b",
+      "name": "Extract Text"
+    },
+    {
+      "parameters": {
+        "chatId": "PLACEHOLDER_CHAT_ID",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Text', ``, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        -96
+      ],
+      "id": "4cb8b0be-b29d-46bc-a150-3a3af628930a",
+      "name": "Send message",
+      "webhookId": "PLACEHOLDER_WEBHOOK_ID",
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER_TELEGRAM_CRED_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -96
+      ],
+      "id": "3df8bc56-4daa-4e6f-8573-8744fa66148e",
+      "name": "Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "PLACEHOLDER_DEEPSEEK_CRED_ID",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === Get all input items ===\nconst allInputItems = $input.all();\nlet pages = [];\n\n// === Access static node data ===\nconst nodeStaticData = $getWorkflowStaticData('node');\n\n// === Get last read page from static data (or default to 0) ===\nlet lastReadPage = nodeStaticData.lastReadPage || 0;\n\n// === Get total number of pages from input ===\nconst totalPages = $input.first().json.numpages;\n\n// === Extract text pages from input ===\nif (allInputItems.length > 0 && Array.isArray(allInputItems[0].json.text)) {\n    pages = allInputItems[0].json.text;\n} else {\n    pages = allInputItems.map(item => item.json.text);\n}\n\n// === Logic: select next 10 pages ===\nconst start = lastReadPage;\nconst end = start + 10;\nconst selectedPages = pages.slice(start, end);\n\n// === Update static data for next execution ===\nnodeStaticData.lastReadPage = Math.min(end, pages.length);\n\n// === Check if all pages have been read ===\nconst bookFinished = nodeStaticData.lastReadPage >= totalPages;\n\n// === Output ===\nreturn [\n  {\n    json: {\n      startPage: start + 1,\n      endPage: Math.min(end, pages.length),\n      selectedPages,\n      combinedText: selectedPages.join('\\n\\n'),\n      lastReadPage: nodeStaticData.lastReadPage,\n      totalPages,\n      bookFinished, // <-- true if done\n      message: bookFinished\n        ? '✅ Book finished — process can stop.'\n        : '📖 Continue reading...',\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -320
+      ],
+      "id": "d1e2be5a-5661-4077-86ba-aa83f3fe45b9",
+      "name": "Get today's pages"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5643504b-ade3-42c7-8157-534e86adc840",
+              "leftValue": "={{ $json.bookFinished }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        -320
+      ],
+      "id": "e563a318-594a-451d-873f-e50aad8a64bb",
+      "name": "Book finished?"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PDF": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Get today's pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get today's pages": {
+      "main": [
+        [
+          {
+            "node": "Book finished?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book finished?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ce19ac01-f858-4416-a7f7-8a2a56adc5c8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "PLACEHOLDER_INSTANCE_ID"
+  },
+  "id": "PLACEHOLDER_WORKFLOW_ID",
+  "tags": []
+}

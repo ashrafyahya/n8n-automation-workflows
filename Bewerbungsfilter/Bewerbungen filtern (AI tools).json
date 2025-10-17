@@ -1,0 +1,280 @@
+{
+  "name": "Bewerbungen filtern (AI tools)",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "=models/gemini-2.5-flash",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Subject:{{ $json.subject }}\nText: {{ $json.text }}\nMessage_ID: {{ $json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "systemMessage": "You are an email classification and labeling system for Gmail. Your goal is to analyze the provided email text and perform the appropriate labeling actions. First, determine if the email is a job application (Bewerbung) or something else. If it is not a job application, do nothing. If it is a job application, proceed as follows: Use the tool \"get many labels in gmail\" to retrieve all existing Gmail labels. Then use check whether a label named \"Bewerbungen\" already exists in the retrieved label list. If the label \"Bewerbungen\" exists, extract its label ID. If the label does not exist, use the tool \"create a label in gmail\" to create a new label called \"Bewerbungen\" and get its label ID. Once the label ID is available, use the tool \"Add label to message in Gmail\" to add the label \"Bewerbungen\" to the email, and then use the tool \"Remove label from message in Gmail\" to remove the label \"INBOX\" from that email. If the email is not a job application, do nothing."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -808,
+        832
+      ],
+      "id": "eb68939a-f6fe-43e2-92e0-9c7a08e36e75",
+      "name": "Classify with Gemini Tool",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "<YOUR_GOOGLE_PALM_API_CREDENTIAL_ID>",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "bb11d9e1-757a-4f6c-8dba-95074b744187",
+      "name": "Cron Trigger1",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        832
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+        "labelIds": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Label_Names_or_IDs', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        -928,
+        1056
+      ],
+      "id": "fa12988b-28ed-4fc7-8336-695c96970f64",
+      "name": "Add label to message in Gmail",
+      "webhookId": "37ee0987-77de-4930-bdee-6e7f5677ed25",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<YOUR_GMAIL_OAUTH_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+        "labelIds": [
+          "INBOX"
+        ]
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        -800,
+        1056
+      ],
+      "id": "ef7b997e-04fe-439f-84df-0acab22517e6",
+      "name": "Remove label from message in Gmail",
+      "webhookId": "2c87f555-ea6a-4f2f-ae11-35720a11a4bb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<YOUR_GMAIL_OAUTH_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "Bewerbungen",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        -672,
+        1056
+      ],
+      "id": "c040e845-78bd-4143-a508-e9a1e9c0be2c",
+      "name": "Create a label in Gmail",
+      "webhookId": "9486dc90-3fb7-442a-a556-693af067eb66",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<YOUR_GMAIL_OAUTH_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "limit": 5,
+        "additionalFields": {}
+      },
+      "id": "728a3c1b-d33f-492d-9755-788179d4a926",
+      "name": "Get Unread Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        832
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<YOUR_GMAIL_OAUTH_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}"
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        -544,
+        1056
+      ],
+      "id": "6d335e35-f158-49ac-9882-6e2a6749e6a8",
+      "name": "Get many labels in Gmail",
+      "webhookId": "d7cfa1a1-9c07-46be-aef8-8514ead2fea1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<YOUR_GMAIL_OAUTH_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "You must ignore this node if you have already found or created the label named 'Bewerbungen'"
+    },
+    {
+      "parameters": {
+        "content": "# Gmail Job Application Management Workflow\n\n## Overview\nAn automated n8n workflow that efficiently organizes job applications in Gmail using Google's Gemini AI for classification and Gmail's label management system.\n\n## Purpose\n- Automatically detect and organize incoming job applications\n- Keep the inbox clean and structured\n- Eliminate manual email sorting\n- Provide cost-effective alternative to premium email management tools\n\n\n## Workflow Process\n\n1. **Initial Check**\n   - Triggered by schedule\n   - Fetches latest unread emails\n\n2. **Classification**\n   - Analyzes email content using Gemini AI\n   - Determines if email is a job application\n\n3. **Label Processing**\n   - Checks for \"Bewerbungen\" label\n   - Creates if necessary\n   - Applies label to confirmed applications\n\n4. **Organization**\n   - Removes inbox label\n   - Moves applications to dedicated section\n",
+        "height": 864,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -64,
+        720
+      ],
+      "typeVersion": 1,
+      "id": "acdd5d7c-6c76-4d8d-8ee1-e807ad716355",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Components\n\n### 1. Automated Triggering\n- Scheduled execution via Cron trigger\n- Regular checking of unread emails (5 at a time)\n\n### 2. Smart Email Processing\n- Uses Google Gemini AI for intelligent email classification\n- Analyzes email content and subject for job application indicators\n- Processes emails based on classification results\n\n### 3. Label Management\n- Automatic verification of \"Bewerbungen\" label existence\n- Creates label if not present\n- Applies label to identified job applications\n- Removes inbox label for better organization\n",
+        "height": 528,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        496,
+        720
+      ],
+      "typeVersion": 1,
+      "id": "197e2140-f902-4201-8b7e-45442f192976",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Classify with Gemini Tool": {
+      "main": [
+        []
+      ]
+    },
+    "Cron Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Get Unread Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Classify with Gemini Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove label from message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Classify with Gemini Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a label in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Classify with Gemini Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unread Emails": {
+      "main": [
+        [
+          {
+            "node": "Classify with Gemini Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many labels in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "Classify with Gemini Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "<WORKFLOW_VERSION_ID>",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "<YOUR_INSTANCE_ID>"
+  },
+  "id": "<WORKFLOW_ID>",
+  "tags": []
+}

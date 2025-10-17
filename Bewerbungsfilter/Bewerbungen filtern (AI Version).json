@@ -1,0 +1,379 @@
+{
+  "name": "Bewerbungen filtern (AI Version)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4fbd0cee-f08b-4173-aa6c-74c4a4090ae6",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1360,
+        104
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "limit": 5,
+        "additionalFields": {}
+      },
+      "id": "ac7be21c-5074-4234-a2a6-f3a43212e0a0",
+      "name": "Get Unread Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        104
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<GMAIL_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "getAll"
+      },
+      "id": "5a3444ff-0ee5-4a8d-8ded-5d0b130b8a27",
+      "name": "Get Labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        104
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<GMAIL_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.labelExists }}",
+              "operation": "regex",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "id": "729bd62e-a9e7-4dd8-97c7-55cac8c8838a",
+      "name": "IF Label Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        104
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "name": "Bewerbungen"
+      },
+      "id": "018ccf91-4e65-4dcb-adb1-253bd9ca9e7a",
+      "name": "Create Bewerbungen Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        32
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<GMAIL_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Subject: {{ $json.headers.subject }}\nBody: {{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "systemMessage": "You are an email classification system. Your task is to analyze the provided email text to determine if it is a job application (Bewerbung) or something else.  **Decision Rules:** 1.  **YES:** Return \"YES\" if the email subject or body clearly indicates an application for a job, position, internship, apprenticeship, or career opportunity. 2.  **NO:** Return \"NO\" if the email is a general inquiry, spam, a business solicitation, an advertisement, or any other topic.  **Constraint:** You must only respond with one word: either **YES** or **NO**. Do not include any other text, explanation, punctuation, or formatting.  **Email Text to Analyze:**"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        104
+      ],
+      "id": "98e825a7-5486-47d2-995a-d786ec17ffd9",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "<GOOGLE_PALM_API_CREDENTIAL_ID>",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "83088b9d-6d4b-4088-8eff-131d79fb916a",
+              "leftValue": "={{ $json.content.parts[0].text }}",
+              "rightValue": "YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        104
+      ],
+      "id": "fb00f4bf-657b-42f3-9c14-1646d00ff8a1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Get Unread Emails').item.json.id }}",
+        "labelIds": "={{ $('Create Bewerbungen Label').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        560,
+        104
+      ],
+      "id": "97a03fdb-eaf9-4cc7-b209-34d645108ac3",
+      "name": "Add label to message",
+      "webhookId": "ec66aeb8-2345-4529-9252-e91a81b7aec8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<GMAIL_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $('Get Unread Emails').item.json.id }}",
+        "labelIds": [
+          "INBOX"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        104
+      ],
+      "id": "9cb6133a-2751-47f6-ba84-04c612fbd02a",
+      "name": "Remove label from message",
+      "webhookId": "2a91d7ad-c44e-41b8-8824-0dcf11f134b9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "<GMAIL_CREDENTIAL_ID>",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const labels = $input.all(); \n\nconst labelItem = labels.find(item => item.json.name === \"Bewerbungen\");\n\n// Check if it exists\nconst exists = !!labelItem;\n\n// --- Return the merged data ---\nreturn [{\n  json: {\n    labelExists: exists,\n    // Safely get the label ID if the label was found\n    labelId: labelItem ? labelItem.json.id : null,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        104
+      ],
+      "id": "bc491c64-4866-4568-8d31-7743567bd5c3",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "content": "# Gmail Application Management Workflow\n\n## Overview\nAn automated n8n workflow for efficiently managing job application emails in Gmail using AI classification and smart label organization.\n\n## Features\n- Automatic email scanning and classification\n- Smart label management\n- Inbox decluttering\n- AI-powered application detection\n\n## Technical Components\n\n### 1. Workflow Trigger\n- Scheduled execution via Cron trigger\n- Regular inbox monitoring\n\n### 2. Email Processing\n- Retrieves unread emails from Gmail inbox\n- Uses Google Gemini AI to analyze email content\n- Intelligent classification of job applications\n\n### 3. Label Management\n- Automatic \"Bewerbungen\" label creation\n- Smart label application for identified job applications\n- Inbox cleanup through label removal\n\n### 4. Automation Flow\n1. Checks for existing \"Bewerbungen\" label\n2. Creates label if not present\n3. Scans unread emails\n4. Analyzes content with AI\n5. Applies labels to confirmed applications\n6. Removes inbox label for organization\n",
+        "height": 960,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        992,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "c549bac0-7d19-4f35-8b56-92acb668995e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Requirements\n- Gmail account with OAuth2 setup\n- n8n installation\n- Google Gemini API credentials\n- Proper authentication configuration\n",
+        "height": 240,
+        "width": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1376,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "afea8003-7a1d-4ebb-9e0e-9c4e56e72661",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unread Emails": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Labels": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Label Exists": {
+      "main": [
+        [
+          {
+            "node": "Get Unread Emails",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Bewerbungen Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bewerbungen Label": {
+      "main": [
+        [
+          {
+            "node": "Get Unread Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "IF Label Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "<VERSION_ID>",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "<INSTANCE_ID>"
+  },
+  "id": "<WORKFLOW_ID>",
+  "tags": []
+}
