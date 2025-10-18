@@ -29,9 +29,9 @@ The newsletter automation workflow creates and distributes tech-focused content:
 
 
 #### FutureTech Newsletter Workflow
-![FutureTech Newsletter Workflow](/FutureTech_newsletter/FutureTech%20workflow.jpg)
+![FutureTech Newsletter Workflow](./FutureTech%20workflow.jpg)
 
-![FutureTech Newsletter Output](/FutureTech_newsletter/example_futureTech%20email.jpeg)
+![FutureTech Newsletter Output](./example_futureTech%20email.jpeg)
 
 
 ## Getting Started

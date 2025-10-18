@@ -18,13 +18,13 @@ Key features:
 - Customizable labeling system
 
 #### Keyword Version Workflow
-![Keyword Version Workflow](/Bewerbungsfilter/filtering%20emails%20with%20regex.jpg)
+![Keyword Version Workflow](/Gmail_label_filtering/filtering%20emails%20with%20regex.jpg)
 
 #### AI Version Workflow
-![AI Version Workflow](/Bewerbungsfilter/filtering%20emails%20with%20ai.jpg)
+![AI Version Workflow](/Gmail_label_filtering/filtering%20emails%20with%20ai.jpg)
 
 #### AI Tools Version Workflow
-![AI Tools Version Workflow](/Bewerbungsfilter/filtering%20emails%20with%20ai%20tools.jpg)
+![AI Tools Version Workflow](/Gmail_label_filtering/filtering%20emails%20with%20ai%20tools.jpg)
 
 ### 2. FutureTech Newsletter
 An automated tech newsletter generation and distribution system featuring:
@@ -54,10 +54,10 @@ Key features:
 - State management for large documents
 
 #### External State Version Workflow
-![External State Version](/Book_Summary/Book-Summarizer%20with%20Code%20Node%20and%20Extern%20State.jpg)
+![External State Version](/Book_summarizer//Book-Summarizer%20with%20Code%20Node%20and%20Extern%20State.jpg)
 
 #### AI Agent and Vectors Version Workflow
-![AI Agent Version](/Book_Summary/Screenshot%202025-10-16%20164011.jpg)
+![AI Agent Version](/Book_summarizer/Screenshot%202025-10-16%20164011.jpg)
 
 
 ## Getting Started
