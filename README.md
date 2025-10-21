@@ -45,19 +45,19 @@ An automated tech newsletter generation and distribution system featuring:
 An intelligent book summarization system with two different approaches:
 
 - **External State Version**: Utilizes external state management for efficient book processing
-- **AI Agent with Vectors Version**: Advanced implementation using AI agents and vector databases
+- **Node Static Data Version**: Uses n8n's built-in static data, Simple implementation
 
 Key features:
 - Automated book processing
 - Intelligent summarization
-- Vector-based information storage
 - State management for large documents
+- Node Static Data
 
 #### External State Version Workflow
 ![External State Version](/Book_summarizer//Book-Summarizer%20with%20Code%20Node%20and%20Extern%20State.jpg)
 
-#### AI Agent and Vectors Version Workflow
-![AI Agent Version](/Book_summarizer/Screenshot%202025-10-16%20164011.jpg)
+#### Node Static Data Version Workflow
+![Node Static Data Version](/Book_summarizer/Book-Summarizer%20with%20node%20static%20data.jpg)
 
 
 ## Getting Started
