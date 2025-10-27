@@ -4,7 +4,7 @@ This repository contains a collection of my experimental automation workflows bu
 
 ## Some of my Workflows
 
-### 1. Bewerbungsfilter (Application Filter)
+### 1. [Bewerbungsfilter (Application Filter)](./Gmail_label_filtering/README.md)
 A sophisticated email filtering system for job applications with three different approaches:
 
 - **Keyword Version**: Simple but rigid filtering based on subject keywords like "Bewerbung" and "Job"
@@ -26,7 +26,7 @@ Key features:
 #### AI Tools Version Workflow
 ![AI Tools Version Workflow](/Gmail_label_filtering/filtering%20emails%20with%20ai%20tools.jpg)
 
-### 2. FutureTech Newsletter
+### 2. [FutureTech Newsletter](./FutureTech_newsletter/README.md)
 An automated tech newsletter generation and distribution system featuring:
 
 - Automated content generation using Gemini 2.5 Flash
@@ -41,7 +41,7 @@ An automated tech newsletter generation and distribution system featuring:
 ![FutureTech Newsletter Output](/FutureTech_newsletter/example_futureTech%20email.jpeg)
 
 
-### 3. Book Summarizer Workflow
+### 3. [Book Summarizer Workflow](./Book_summarizer/README.md)
 An intelligent book summarization system with two different approaches:
 
 - **External State Version**: Utilizes external state management for efficient book processing
@@ -58,6 +58,26 @@ Key features:
 
 #### Node Static Data Version Workflow
 ![Node Static Data Version](/Book_summarizer/Book-Summarizer%20with%20node%20static%20data.jpg)
+
+
+### 4. [Personal Data Extractor](./Extract_personal_data/README.md)
+An automated personal data extraction system featuring:
+
+- Automated extraction of personal information from documents
+- AI-powered data parsing and recognition
+- Structured data output
+- Automated processing workflow
+- Data validation and verification
+
+Key features:
+- Document format handling
+- AI-powered information extraction
+- Data validation and verification
+- Structured output generation
+- Privacy-compliant processing
+
+#### Personal Data Extractor Workflow
+![Personal Data Extractor Workflow](/Extract_personal_data/Workflow.jpg)
 
 
 ## Getting Started
