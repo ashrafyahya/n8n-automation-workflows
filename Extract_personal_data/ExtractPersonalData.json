@@ -1,0 +1,427 @@
+{
+  "name": "extractPersonalData",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ $('Email Trigger').item.binary.attachment_0 }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -336
+      ],
+      "id": "d6db334d-178f-44c6-9edd-79419a48106f",
+      "name": "Extract file text"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node Function\n\n// 1. Get input text\nconst input = $('Is job? extract data : nothing').first().json.content.parts[1].text;\n// 2. Extract JSON inside ```json ... ```\nconst regex = /```json\\s*([\\s\\S]*?)\\s*```/g;\nconst matches = [];\nlet match;\nwhile ((match = regex.exec(input)) !== null) matches.push(match[1]);\n\n// 3. Parse JSON safely\nconst parsedObjects = matches.map(str => {\n  try { return JSON.parse(str); }\n  catch { return { error: \"Invalid JSON\", raw: str }; }\n});\n\n// 4. Helper: normalize array/object\nfunction normalizeArray(v) {\n  if (Array.isArray(v)) return v;\n  if (v && typeof v === \"object\") return [v];\n  return [];\n}\n\n// 5. Collect all section data\nconst sections = {};\n\nparsedObjects.forEach(obj => {\n  if (!obj || typeof obj !== \"object\") return;\n\n  const add = (name, val) => {\n    const arr = normalizeArray(val);\n    if (!sections[name]) sections[name] = [];\n    arr.forEach(entry => sections[name].push(entry));\n  };\n\n  if (obj.applicant_information) add(\"applicant_information\", obj.applicant_information);\n  if (obj.education) add(\"education\", obj.education);\n  if (obj.previous_employment) add(\"previous_employment\", obj.previous_employment);\n  if (obj.volunteer_experience) add(\"volunteer_experience\", obj.volunteer_experience);\n  if (obj.achievements_awards_organizations) add(\"achievements_awards_organizations\", obj.achievements_awards_organizations);\n  if (obj.references) add(\"references\", obj.references);\n  if (obj.additional_information) add(\"additional_information\", obj.additional_information);\n});\n\n// 6. Filter rows: remove purely-duplicate header-like rows and fully-empty objects\nfunction isHeaderLike(obj) {\n  if (!obj || typeof obj !== \"object\") return false;\n  const keys = Object.keys(obj);\n  if (!keys.length) return false;\n  return keys.every(k => obj[k] === k);\n}\nfunction isAllEmpty(obj) {\n  if (!obj || typeof obj !== \"object\") return true;\n  return Object.values(obj).every(v => v === \"\" || v === null || v === undefined);\n}\n\n// Clean each section rows\nObject.keys(sections).forEach(sec => {\n  sections[sec] = sections[sec].filter(r => r && typeof r === \"object\" && !isHeaderLike(r) && !isAllEmpty(r));\n});\n\n// 7. Build output - each section with its own columns starting from first column\nconst outputItems = [];\n\nObject.entries(sections).forEach(([section, rows]) => {\n  if (!rows || !rows.length) return;\n\n  // 7a) Get all unique keys for this section (from all rows)\n  const sectionKeys = Array.from(\n    rows.reduce((acc, r) => {\n      Object.keys(r || {}).forEach(k => acc.add(k));\n      return acc;\n    }, new Set())\n  );\n\n  // 7b) Section title row (only first column filled)\n  const sectionRow = {};\n  sectionRow[\"column0\"] = section; // Use generic column names\n  outputItems.push({ json: sectionRow });\n\n  // 7c) Header row for this section (each header in its own column starting from first)\n  const sectionHeaderRow = {};\n  sectionKeys.forEach((key, index) => {\n    const column = \"column\" + index; // column0, column1, column2, etc.\n    sectionHeaderRow[column] = key;\n  });\n  outputItems.push({ json: sectionHeaderRow });\n\n  // 7d) Data rows for this section\n  rows.forEach(r => {\n    const dataRow = {};\n    sectionKeys.forEach((key, index) => {\n      const column = \"column\" + index; // column0, column1, column2, etc.\n      const v = r[key];\n      if (Array.isArray(v)) dataRow[column] = v.join(\"; \");\n      else if (v && typeof v === \"object\") dataRow[column] = JSON.stringify(v);\n      else dataRow[column] = v || \"\";\n    });\n    // skip fully empty data rows\n    if (Object.values(dataRow).every(v => v === \"\")) return;\n    outputItems.push({ json: dataRow });\n  });\n\n  // 7e) Add 3 fully-empty rows for spacing\n  for (let i = 0; i < 3; i++) {\n    outputItems.push({ json: {} }); // Empty object for empty row\n  }\n});\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        -272
+      ],
+      "id": "d71a51af-381b-4535-a9fa-a200b37532ac",
+      "name": "Extract objects"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Create new sheet').item.json.title }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "column0",
+              "displayName": "column0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column1",
+              "displayName": "column1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column2",
+              "displayName": "column2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column3",
+              "displayName": "column3",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column4",
+              "displayName": "column4",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column5",
+              "displayName": "column5",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column6",
+              "displayName": "column6",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column7",
+              "displayName": "column7",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "column8",
+              "displayName": "column8",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -176,
+        -272
+      ],
+      "id": "2acae1dc-f3c8-4523-ac08-bd32c0ccd36b",
+      "name": "Append or update",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CREDENTIALS_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.headers.subject }}\n{{ $json.text }}\n{{ $('Email Trigger').item.binary.attachment_0 }}\n- Output Format exactly like this example:\n{\"job\": true, \"file\": true}\n- If {{ $('Email Trigger').item.binary.attachment_0 }} is not given in the input then set \"file\" to false.\n**Do not include any explanations, text, or formatting outside of the JSON.**"
+            },
+            {
+              "content": "You are an AI assistant.\n\nYour task:\n- Analyze the input text and any attachments.\n\nLogic:\n1. If the input is related to a job application (mentions things like \"apply\", \"job\", \"position\", \"application\", \"resume\", \"CV\", \"cover letter\", \"Bewerbung\", etc.), set \"job\" to true. Otherwise, set \"job\" to false.\n2. If the input contains a file such a pdf or more set \"file\" to true, otherwise set \"file\" to false.\n\nOutput rules:\n- Output must be ONLY a single valid JSON object.\n- Do NOT include markdown formatting, explanations, examples, or multiple responses.\n- Do NOT wrap the output in code blocks.\n- Do NOT output anything other than the JSON object.\n- Output format must be exactly:\n{\"job\": true, \"file\": true}\n\n\n**Do not include any explanations, text, or formatting outside of the JSON.**\n",
+              "role": "model"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        -272
+      ],
+      "id": "73275377-6a07-42d9-9f7e-3b045f761c58",
+      "name": "Is job with file?",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CREDENTIALS_ID",
+          "name": "Google Gemini API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "13846b2b-b754-4f1d-a6da-59bb3eaca5e1",
+              "leftValue": "={{ $json.content.parts[0].text.parseJson().job }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a33e89d6-9dfd-4c66-8244-09b390e4f810",
+              "leftValue": "={{ $json.content.parts[0].text.parseJson().file }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1424,
+        -272
+      ],
+      "id": "9af0b421-ca84-42df-a52d-6abba7fb77a5",
+      "name": "If job & file"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "title": "=n8n{{ $now.format('MM dd HH:MM:ss') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -624,
+        -272
+      ],
+      "id": "96183b52-f636-4c97-9f8e-5fb922ee712a",
+      "name": "Create new sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CREDENTIALS_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "postProcessAction": "nothing",
+        "format": "resolved",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        -2000,
+        -272
+      ],
+      "id": "42074c30-dcad-4fb0-9c06-72251a468d3c",
+      "name": "Email Trigger",
+      "credentials": {
+        "imap": {
+          "id": "CREDENTIALS_ID",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Received:  {{ $('Email Trigger').item.json.headers.received }}\nFrom: {{ $('Email Trigger').item.json.from }}\nSubject: {{ $('Email Trigger').item.json.headers.subject }}\nText: {{ $('Email Trigger').item.json.text }}\nAttachments: {{ $json.text }}\n\n\nYou are an intelligent email-processing assistant.\n\nYour task:\n1. Analyze the content of the received email carefully.\n2. If the email appears to be a job application (for example, it includes a CV, motivation letter, or mentions job application, position, or hiring):\n \n3. **If the email is **not** a job application, do nothing (return no output).**\n4. If attachments exist (e.g., CVs or PDFs), extract their **text content** and include it under `\"attachments\"`.\n\nBe concise, structured, and always output valid JSON when returning results.\n"
+            },
+            {
+              "content": "You are an AI assistant.\nYour task is to extract key personal details from a user's input and output them strictly in JSON format according to the structure below.\n\nEach main section (e.g., Education, Experience) represents a column, and each entry within that section (e.g., different universities or jobs) represents a row.\nInclude only relevant, concise details — do not copy full paragraphs or unrelated text.\n\nIf a piece of information is not available, leave it as an empty string \"\" or an empty array [].\nDo not add or rename fields. Do not include any text or explanations outside the JSON.\n\nOutput format:\n\n{\n  \"applicant_information\": {\n    \"First name\": \"\",\n    \"Last name\": \"\",\n    \"Birth date\": \"\",\n    \"Address\": \"\",\n    \"House number\": \"\",\n    \"City\": \"\",\n    \"Zip\": \"\",\n    \"Phone\": \"\",\n    \"Email\": \"\"\n  },\n  \"education\": [\n    {\n      \"Institution name\": \"\",\n      \"Type\": \"\", \n      \"From\": \"\",\n      \"To\": \"\",\n      \"City\": \"\",\n      \"Degree\": \"\",\n      \"Field of study\": \"\",\n      \"Graduated\": \"\"\n    }\n  ],\n  \"previous_employment\": [\n    {\n      \"Company\": \"\",\n      \"Job title\": \"\",\n      \"From\": \"\",\n      \"To\": \"\",\n      \"City\": \"\",\n      \"Responsibilities\": \"\",\n      \"Supervisor\": \"\",\n      \"Phone\": \"\",\n      \"Reason for leaving\": \"\"\n    }\n  ],\n  \"volunteer_experience\": [\n    {\n      \"Organization\": \"\",\n      \"From\": \"\",\n      \"To\": \"\",\n      \"City\": \"\",\n      \"Description\": \"\"\n    }\n  ],\n  \"achievements_awards_organizations\": [\n    {\n      \"Title\": \"\",\n      \"Organization\": \"\",\n      \"Year\": \"\",\n      \"Description\": \"\"\n    }\n  ],\n  \"references\": [\n    {\n      \"Full name\": \"\",\n      \"Company\": \"\",\n      \"Relationship\": \"\",\n      \"Phone\": \"\",\n      \"Email\": \"\"\n    }\n  ],\n  \"additional_information\": {\n    \"Valid driver's license\": \"\",\n    \"Physical limitations\": \"\",\n    \"Hobbies or special skills\": [],\n    \"Emergency contact\": {\n      \"Name\": \"\",\n      \"Phone\": \"\",\n      \"Relationship\": \"\",\n      \"Address\": \"\"\n    }\n  }\n}\n\n\nInstructions for extraction:\n\nIdentify only key factual information (names, dates, roles, degrees, contact details, etc.).\n\nIgnore sentences, descriptions, and formatting not related to these fields.\n\nIf multiple entries exist for a section (e.g., several jobs or schools), list each one as a separate object in its section array.\n\nReturn only the final structured JSON — no text or commentary",
+              "role": "model"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -272
+      ],
+      "id": "4ab0005c-f464-440e-9df8-4d45caf4b02a",
+      "name": "Is job? extract data : nothing",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CREDENTIALS_ID",
+          "name": "Google Gemini API account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract file text": {
+      "main": [
+        [
+          {
+            "node": "Is job? extract data : nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract objects": {
+      "main": [
+        [
+          {
+            "node": "Append or update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is job with file?": {
+      "main": [
+        [
+          {
+            "node": "If job & file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If job & file": {
+      "main": [
+        [
+          {
+            "node": "Extract file text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is job? extract data : nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create new sheet": {
+      "main": [
+        [
+          {
+            "node": "Extract objects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is job with file?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is job? extract data : nothing": {
+      "main": [
+        [
+          {
+            "node": "Create new sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0809ff9a-1a2c-4762-9b11-88be245f4449",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "INSTANCE_ID"
+  },
+  "id": "WORKFLOW_ID",
+  "tags": []
+}
